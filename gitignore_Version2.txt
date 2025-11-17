@@ -1,5 +1,0 @@
-/vendor/
-/composer.lock
-/.idea
-/.vscode
-/tests/_output
