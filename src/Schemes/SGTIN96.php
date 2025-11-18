@@ -47,9 +47,14 @@ class SGTIN96
         $companyPrefixStr = str_pad((string)$companyPrefix, $pt['cpDigits'], "0", STR_PAD_LEFT);
         $itemRefStr = str_pad((string)$itemRef, $pt['itemDigits'], "0", STR_PAD_LEFT);
 
-        $gtin13 = $companyPrefixStr . $itemRefStr;
-        if (strlen($gtin13) < 13) {
-            $gtin13 = str_pad($gtin13, 13, '0', STR_PAD_LEFT);
+        // The item reference includes the GTIN indicator digit as its first digit.
+        // Build the 13-digit GTIN stem as: indicator + company_prefix + item_ref_without_indicator
+        $indicatorDigit = substr($itemRefStr, 0, 1);
+        $itemRefWithoutIndicator = substr($itemRefStr, 1);
+
+        $gtin13stem = $indicatorDigit . $companyPrefixStr . $itemRefWithoutIndicator;
+        if (strlen($gtin13stem) < 13) {
+            $gtin13stem = str_pad($gtin13stem, 13, '0', STR_PAD_LEFT);
         }
 
         $urn = sprintf('urn:epc:id:sgtin:%s.%s.%s', $companyPrefixStr, $itemRefStr, (string)$serial);
@@ -63,7 +68,7 @@ class SGTIN96
             'item_reference' => $itemRefStr,
             'serial' => (string)$serial,
             'urn' => $urn,
-            'gtin14' => self::gtin14FromGtin13($gtin13),
+            'gtin14' => self::gtin14FromGtin13($gtin13stem),
         ];
     }
 
@@ -73,9 +78,7 @@ class SGTIN96
         if (strlen($gtin13) !== 13) {
             $gtin13 = str_pad($gtin13, 13, '0', STR_PAD_LEFT);
         }
-        $withoutCheck = '0' . $gtin13;
-        $left13 = substr($withoutCheck, 0, 13);
-        $digits = array_map('intval', str_split($left13));
+        $digits = array_map('intval', str_split($gtin13));
         $reversed = array_reverse($digits);
         $sum = 0;
         foreach ($reversed as $i => $d) {
@@ -84,6 +87,6 @@ class SGTIN96
         }
         $mod = $sum % 10;
         $check = ($mod === 0) ? 0 : (10 - $mod);
-        return $withoutCheck . (string)$check;
+        return $gtin13 . (string)$check;
     }
 }
