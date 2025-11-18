@@ -5,13 +5,6 @@ use Epc\Utils\BitReader;
 
 /**
  * Decoder for SGTIN-96 (EPC header 0x30).
- *
- * Reference (simplified):
- * - Header: 8 bits (0x30)
- * - Filter: 3 bits
- * - Partition: 3 bits
- * - Company prefix + item reference: 44 bits (partition determines split)
- * - Serial: 38 bits
  */
 class SGTIN96
 {
@@ -27,13 +20,6 @@ class SGTIN96
         6 => ['cpBits' => 20, 'itemBits' => 24, 'cpDigits' => 6,  'itemDigits' => 7],
     ];
 
-    /**
-     * Decode a 12-byte (96-bit) EPC into an associative array.
-     *
-     * @param string $bytes 12-byte string (binary)
-     * @return array
-     * @throws \InvalidArgumentException
-     */
     public static function decodeRaw(string $bytes): array
     {
         if (strlen($bytes) !== 12) {
@@ -54,27 +40,18 @@ class SGTIN96
         }
         $pt = self::$partitionTable[$partition];
 
-        $cpBits = $pt['cpBits'];
-        $itemBits = $pt['itemBits'];
-
-        $companyPrefix = $r->readBits($cpBits);
-        $itemRef = $r->readBits($itemBits);
+        $companyPrefix = $r->readBits($pt['cpBits']);
+        $itemRef = $r->readBits($pt['itemBits']);
         $serial = $r->readBits(38);
 
-        // Turn numeric fields into zero-padded strings with appropriate digit counts
-        $companyPrefixDigits = $pt['cpDigits'];
-        $itemRefDigits = $pt['itemDigits'];
+        $companyPrefixStr = str_pad((string)$companyPrefix, $pt['cpDigits'], "0", STR_PAD_LEFT);
+        $itemRefStr = str_pad((string)$itemRef, $pt['itemDigits'], "0", STR_PAD_LEFT);
 
-        $companyPrefixStr = str_pad((string)$companyPrefix, $companyPrefixDigits, "0", STR_PAD_LEFT);
-        $itemRefStr = str_pad((string)$itemRef, $itemRefDigits, "0", STR_PAD_LEFT);
-
-        // The SGTIN item reference from the partition table is the 13-digit GS1 item reference (without check digit)
-        $gtin13 = $companyPrefixStr . $itemRefStr; // 13 digits
+        $gtin13 = $companyPrefixStr . $itemRefStr;
         if (strlen($gtin13) < 13) {
             $gtin13 = str_pad($gtin13, 13, '0', STR_PAD_LEFT);
         }
 
-        // Construct URN: urn:epc:id:sgtin:<company>.<item>.<serial>
         $urn = sprintf('urn:epc:id:sgtin:%s.%s.%s', $companyPrefixStr, $itemRefStr, (string)$serial);
 
         return [
@@ -90,24 +67,13 @@ class SGTIN96
         ];
     }
 
-    /**
-     * Convert a 13-digit GS1 element (companyPrefix+itemRef) to GTIN-14
-     * by prefixing an indicator digit (0) and computing the check digit.
-     *
-     * NOTE: this is a practical default (indicator 0). Different applications may use a different indicator.
-     *
-     * @param string $gtin13 13 digits (companyprefix+itemref)
-     * @return string GTIN-14 (14 digits with calculated check digit)
-     */
     public static function gtin14FromGtin13(string $gtin13): string
     {
         $gtin13 = preg_replace('/[^0-9]/', '', $gtin13);
         if (strlen($gtin13) !== 13) {
             $gtin13 = str_pad($gtin13, 13, '0', STR_PAD_LEFT);
         }
-        // Prefix indicator 0 (common default)
-        $withoutCheck = '0' . $gtin13; // 14 digits, last digit to be computed below
-        // Compute check digit for GTIN-14 using the first 13 digits (positions 1..13)
+        $withoutCheck = '0' . $gtin13;
         $left13 = substr($withoutCheck, 0, 13);
         $digits = array_map('intval', str_split($left13));
         $reversed = array_reverse($digits);
