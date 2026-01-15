@@ -13,7 +13,7 @@ use Epc\Schemes\GID96;
  *
  * Recognizes multiple 96-bit EPC schemes and basic URN parsing for several schemes.
  */
-class EpcDecoder
+class Decoder
 {
     public function decodeHex(string $hex): array
     {
