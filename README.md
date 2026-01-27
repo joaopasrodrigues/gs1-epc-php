@@ -13,7 +13,18 @@ Installation (from Packagist — after you publish)
 - Require the package:
   composer require joaopasrodrigues/gs1-epc-php
 
-Basic usage
+
+# Using the code:
+
+```   
+composer require joaopasrodrigues/gs1-epc-php
+```
+
+
+
+#Basic usage
+
+##Decoding EPCs
 ```php
 <?php
 require 'vendor/autoload.php';
@@ -43,17 +54,56 @@ Array
 )
 ```
 
-Development & Tests
-- Run tests with PHPUnit (composer require --dev phpunit/phpunit and then run phpunit or vendor/bin/phpunit)
-- Add additional scheme decoders under `src/Schemes/`.
 
-Publishing instructions
-1. Create a GitHub repo `joaopasrodrigues/gs1-epc-php` and push these files.
-2. (Optional) Register the repository on Packagist (https://packagist.org/) to make it installable via composer require.
-3. When published on Packagist, users can add it to their project using:
-   composer require joaopasrodrigues/gs1-epc-php
+##Encoding
 
-Notes
-- Current implementation focuses on SGTIN-96 (header 0x30). Adding more schemes is straightforward: add a new class under `src/Schemes/` and register the header handling in `src/Decoder.php`.
-- Ensure you add official test vectors for complete validation before production use.
+
+
+###How to Use the Factory
+
+######PHP
 ```
+use Gs1Epc\Epc;
+
+// Encode an SGTIN (GTIN-14)
+$hexSgtin = Epc::fromBarcode('01', '00614141123452', '6789', 7);
+echo "SGTIN Hex: $hexSgtin\n";
+
+// Encode an SSCC
+$hexSscc = Epc::fromBarcode('00', '106141411234567890', '0', 7);
+echo "SSCC Hex: $hexSscc\n";
+
+```
+######Summary of Logic
+Centralized: One class (Epc) to rule them all.
+
+Smart Parsing: Handles the weirdness of SSCC (Extension Digit) and GRAI internally.
+
+Standards Compliant: Uses the 96-bit partition tables for all major GS1 keys.
+
+####
+##Summary Table of Schemes used for encoding
+|Scheme |GS1 Key|Binary Header|Reference Part|Serial Part|
+|----------|----------|-------|--------------|------|
+|SGTIN-96|GTIN|0x30|Item Reference|38 bits|
+|SSCC-96|SSCC|0x31|Serial Reference|24 bits (zeros at end)|
+|SGLN-96|GLN|0x32|Location Reference|38 bits (Extension)|
+|GRAI-96|GRAI|0x33|Asset Type|38 bits|
+|GIAI-96|GIAI|0x34|Individual Asset Ref|Variable (up to 82 bits)|
+
+
+#Development & Tests
+- Run tests with PHPUnit (composer require --dev phpunit/phpunit and then run phpunit or vendor/bin/phpunit)
+
+
+
+
+
+
+
+
+
+
+
+
+
